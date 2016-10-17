@@ -1,0 +1,14 @@
+animation/
+avatar/
+image/
+temp/
+text/
+voice/
+wxBot/animation
+wxBot/avatar
+wxBot/image
+wxBot/temp
+wxBot/text
+wxBot/voice
+*.bak
+python_test.py
