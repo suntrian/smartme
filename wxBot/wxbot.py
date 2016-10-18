@@ -11,6 +11,7 @@ import re
 import sys
 import threading
 import time
+import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -74,16 +75,6 @@ class WXBot:
     SELECT_TYPE_PHONE = 7
     SELECT_TYPE_NOTHING = 0
 
-    MSG_TYPE_INIT = 0
-    MSG_TYPE_SELF = 1
-    MSG_TYPE_FILEHELPER = 2
-    MSG_TYPE_GROUP = 3
-    MSG_TYPE_CONTACT = 4
-    MSG_TYPE_PUBLIC = 5
-    MSG_TYPE_SPECIAL = 6
-    MSG_TYPE_FRIENDREQ = 37
-    MSG_TYPE_UNKNOW = 99
-
     CONTENT_TYPE_TEXT = 1
     CONTENT_TYPE_IMAGE = 3
     CONTENT_TYPE_VOICE = 34
@@ -103,6 +94,16 @@ class WXBot:
     CONTENT_TYPE_SYS = 1e4
     CONTENT_TYPE_REDRAW_OR_OTHER = 10000  # 收到红包和位置共享结束的消息都是10000
     CONTENT_TYPE_RECALLED = 10002
+
+    MSG_FROM_STATUSNOTIFY = CONTENT_TYPE_STATUSNOTIFY
+    MSG_FROM_SELF = 0
+    MSG_FROM_FILEHELPER = 2
+    MSG_FROM_GROUP = 3
+    MSG_FROM_CONTACT = 4
+    MSG_FROM_PUBLIC = 5
+    MSG_FROM_SPECIAL = 6
+    MSG_FROM_FRIENDREQ = 37
+    MSG_FROM_UNKNOW = 99
 
     MSG_SEND_STATUS_READY = 0
     MSG_SEND_STATUS_SENDING = 1
@@ -146,6 +147,16 @@ class WXBot:
     UPLOAD_MEDIA_TYPE_VIDEO = 2
     UPLOAD_MEDIA_TYPE_AUDIO = 3
     UPLOAD_MEDIA_TYPE_ATACHMENT = 4
+
+    DICT_MSG_KEY_FROM_TYPE = 'MsgFrom'
+    DICT_MSG_KEY_MSG_ID = 'MsgId'
+    DICT_MSG_KEY_MSG_CONTENT = 'Msg'
+    DICT_MSG_KEY_USERFROM = 'UserFrom'
+    DICT_MSG_KEY_USERTO = 'UserTo'
+    DICT_MSGCONTENT_KEY_TYPE = 'MsgType'
+    DICT_MSGCONTENT_KEY_DATA = 'Content'
+    DICT_MSGCONTENT_KEY_SUBUSER = 'SubUser'
+
 
     def __init__(self):
         self.DEBUG = True
@@ -427,7 +438,7 @@ class WXBot:
         处理所有消息，请子类化后覆盖此函数
         msg:
             msg_id  ->  消息id
-            msg_type_id  ->  消息类型id
+            msg_from_type  ->  消息类型id
             user  ->  发送消息的账号id
             content  ->  消息内容
         :param msg: 收到的消息
@@ -467,25 +478,25 @@ class WXBot:
             str_msg = msg
         return str_msg_all.replace('\u2005', ''), str_msg.replace('\u2005', ''), infos
 
-    def extract_msg_content(self, msg_type_id, msg):
+    def extract_msg_content(self, msg_from_type, msg):
         """
-        :param msg_type_id: 消息类型id
+        :param msg_from_type: 消息类型id
         :param msg: 消息结构体
         :return: 解析的消息
         """
+        type = WXBot.DICT_MSGCONTENT_KEY_TYPE
+        data = WXBot.DICT_MSGCONTENT_KEY_DATA
         mtype = msg['MsgType']
         content = html.unescape(msg['Content'])
         msg_id = msg['MsgId']
-        from_user_id = msg['FromUserName']
-        from_user_prefer_name = self.get_contact_prefer_name(self.get_contact_name(from_user_id))
-        from_user_prefer_name = from_user_prefer_name if from_user_prefer_name else ''
 
         msg_content = {}
-        if msg_type_id == WXBot.CONTENT_TYPE_STATUSNOTIFY:
-            return {'type': WXBot.CONTENT_TYPE_STATUSNOTIFY, 'data': content}
-        elif msg_type_id == WXBot.MSG_TYPE_FILEHELPER:  # File Helper
-            return {'type': WXBot.CONTENT_TYPE_TEXT, 'data': content.replace('<br/>', '\n')}
-        elif msg_type_id == WXBot.MSG_TYPE_GROUP:  # 群聊
+        if msg_from_type == WXBot.MSG_FROM_STATUSNOTIFY:
+            return {type: WXBot.CONTENT_TYPE_STATUSNOTIFY, data: content}
+        elif msg_from_type == WXBot.MSG_FROM_FILEHELPER:  # File Helper
+            # TODO
+            return {type: WXBot.CONTENT_TYPE_TEXT, data: content.replace('<br/>', '\n')}
+        elif msg_from_type == WXBot.MSG_FROM_GROUP:  # 群聊
             sp = content.find('<br/>')
             uid = content[:sp]
             content = content[sp:]
@@ -496,66 +507,76 @@ class WXBot:
                 name = self.get_group_member_prefer_name(self.get_group_member_name(msg['FromUserName'], uid))
             if not name:
                 name = 'unknown'
-            msg_content['user'] = {'id': uid, 'name': name}
-        elif msg_type_id == WXBot.MSG_TYPE_SELF:  # self
+            msg_content[WXBot.DICT_MSGCONTENT_KEY_SUBUSER] = {'id': uid, 'name': name}
+
+        elif msg_from_type == WXBot.MSG_FROM_SELF:  # self
             pass
-        elif msg_type_id == WXBot.MSG_TYPE_PUBLIC:
+        elif msg_from_type == WXBot.MSG_FROM_PUBLIC:
             pass
         else:  # Self, Contact, Special, Public, Unknown
             pass
 
-        msg_prefix = (msg_content['user']['name'] + ':') if 'user' in msg_content else ''
+        msg_prefix = (msg_content['SubUser']['name'] + ':') if 'SubUser' in msg_content.keys() else ''
 
         if mtype == WXBot.CONTENT_TYPE_TEXT:
             if msg['SubMsgType'] == WXBot.CONTENT_TYPE_LOCATION:
+                msg_content[type] = WXBot.CONTENT_TYPE_LOCATION
                 content = content.replace('<br/>', '')
-                location_url = msg['Url']
-                location_name = content[:content.find(':')]
-                location_pic_url = self.sync_host + content[content.find(":") + 1:]
+                msg_content['Url'] = location_url = msg['Url']
+                msg_content[data] = location_name = content[:content.find(':')]
+                msg_content['Pic'] = location_pic_url = self.sync_host + content[content.find(":") + 1:]
                 if self.DEBUG:
                     print('    [Location] %s ' % (location_name))
                     print('    |URL: %s' % location_url)
                     print('    |THUMB_PIC: %s' % location_pic_url)
             else:
-                msg_content['type'] = WXBot.CONTENT_TYPE_TEXT
-                if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # Group text message
+                msg_content[type] = WXBot.CONTENT_TYPE_TEXT
+                if msg_from_type == WXBot.MSG_FROM_GROUP or (msg_from_type == WXBot.MSG_FROM_SELF and msg['ToUserName'][:2] == '@@'):  # Group text message
                     msg_infos = self.proc_at_info(content)
                     str_msg_all = msg_infos[0]
                     str_msg = msg_infos[1]
                     detail = msg_infos[2]
-                    msg_content['data'] = str_msg_all
-                    msg_content['detail'] = detail
-                    msg_content['desc'] = str_msg
+                    msg_content[data] = str_msg_all
+                    msg_content['Detail'] = detail
+                    msg_content['Desc'] = str_msg
                 else:
-                    msg_content['data'] = content
+                    msg_content[data] = content
                 if self.DEBUG:
                     try:
-                        print('    %s[Text] %s' % (msg_prefix, msg_content['data']))
+                        print('    %s[Text] %s' % (msg_prefix, msg_content[data]))
                     except UnicodeEncodeError:
                         print('    %s[Text] (illegal text).' % msg_prefix)
         elif mtype == WXBot.CONTENT_TYPE_IMAGE:
-            msg_content['type'] = mtype
-            msg_content['data'] = self.get_msg_img_url(msg_id)
+            msg_content[type] = mtype
+            msg_content[data] = self.get_msg_img_url(msg_id)
             # msg_content['img'] = codecs.encode(self.session.get(msg_content['data']).content,'hex')
             if self.DEBUG:
-                image = self.get_msg_img(msg_id, from_user_prefer_name)
+                from_user = self.get_contact_prefer_name(self.get_contact_name(msg['FromUserName']))
+                from_user = from_user if from_user else 'unknow'
+                to_user = self.get_contact_prefer_name(self.get_contact_name(msg['ToUserName']))
+                to_user = to_user if to_user else  'unknow'
+                image = self.get_msg_img(msg_id, from_user + '_' + to_user)
                 print('    %s[Image] %s' % (msg_prefix, image))
         elif mtype == WXBot.CONTENT_TYPE_VOICE:
-            msg_content['type'] = mtype
-            msg_content['data'] = self.get_voice_url(msg_id)
+            msg_content[type] = mtype
+            msg_content[data] = self.get_voice_url(msg_id)
             # msg_content['voice'] = codecs.encode(self.session.get(msg_content['data']).content,'hex')
             if self.DEBUG:
-                voice = self.get_voice(msg_id, from_user_prefer_name)
+                from_user = self.get_contact_prefer_name(self.get_contact_name(msg['FromUserName']))
+                from_user = from_user if from_user else 'unknow'
+                to_user = self.get_contact_prefer_name(self.get_contact_name(msg['ToUserName']))
+                to_user = to_user if to_user else  'unknow'
+                voice = self.get_voice(msg_id, from_user + '_' + to_user)
                 print('    %s[Voice] %s' % (msg_prefix, voice))
         elif mtype == WXBot.CONTENT_TYPE_VERIFYMSG:
-            msg_content['type'] = WXBot.CONTENT_TYPE_VERIFYMSG
-            msg_content['data'] = msg['RecommendInfo']
+            msg_content[type] = WXBot.CONTENT_TYPE_VERIFYMSG
+            msg_content[data] = msg['RecommendInfo']
             if self.DEBUG:
                 print('    %s[useradd] %s' % (msg_prefix, msg['RecommendInfo']['NickName']))
         elif mtype == WXBot.CONTENT_TYPE_SHARECARD:
-            msg_content['type'] = mtype
+            msg_content[type] = mtype
             info = msg['RecommendInfo']
-            msg_content['data'] = {'nickname': info['NickName'],
+            msg_content[data] = {'nickname': info['NickName'],
                                    'alias': info['Alias'],
                                    'province': info['Province'],
                                    'city': info['City'],
@@ -569,13 +590,13 @@ class WXBot:
                 print('    | Gender: %s' % ['unknown', 'male', 'female'][info['Sex']])
                 print('    -----------------------------')
         elif mtype == WXBot.CONTENT_TYPE_EMOTICON:
-            msg_content['type'] = mtype
-            msg_content['data'] = self.search_content('cdnurl', content)
+            msg_content[type] = mtype
+            msg_content[data] = self.search_content('cdnurl', content)
             if self.DEBUG:
-                self.get_animation(msg_content['data'])
-                print('    %s[Animation] %s' % (msg_prefix, msg_content['data']))
+                self.get_animation(msg_content[data])
+                print('    %s[Animation] %s' % (msg_prefix, msg_content[data]))
         elif mtype == WXBot.CONTENT_TYPE_APP:
-            msg_content['type'] = mtype
+            msg_content[type] = mtype
             app_msg_type_id = msg['AppMsgType']
             if app_msg_type_id == WXBot.APPMSG_TYPE_TEXT:
                 app_msg_type = 'TEXT'
@@ -609,12 +630,12 @@ class WXBot:
                 app_msg_type = 'TRANSFERS'
             else:
                 app_msg_type = 'OTHER APPMSG TYPE'
-            msg_content['data'] = {'type': app_msg_type,
+            msg_content[data] = {'type': app_msg_type,
                                    'title': msg['FileName'],
                                    'desc': self.search_content('des', content, 'xml'),
                                    'url': msg['Url'],
                                    'from': self.search_content('appname', content, 'xml'),
-                                   'content': msg.get('Content')  # 有的公众号会发一次性3 4条链接一个大图,如果只url那只能获取第一条,content里面有所有的链接
+                                   'content': msg.get('Content', '')  # 有的公众号会发一次性3 4条链接一个大图,如果只url那只能获取第一条,content里面有所有的链接
                                    }
             if self.DEBUG:
                 print('    %s[Share] %s' % (msg_prefix, app_msg_type))
@@ -627,32 +648,32 @@ class WXBot:
                 print('    --------------------------')
 
         elif mtype == WXBot.CONTENT_TYPE_MICROVIDEO:
-            msg_content['type'] = mtype
-            msg_content['data'] = content
+            msg_content[type] = mtype
+            msg_content[data] = content
             if self.DEBUG:
                 print('    %s[Video] Please check on mobiles' % msg_prefix)
         elif mtype == WXBot.CONTENT_TYPE_VOIPINVITE:
-            msg_content['type'] = 9
-            msg_content['data'] = content
+            msg_content[type] = 9
+            msg_content[data] = content
             if self.DEBUG:
                 print('    %s[Video Call]' % msg_prefix)
         elif mtype == WXBot.CONTENT_TYPE_RECALLED:
-            msg_content['type'] = mtype
-            msg_content['data'] = content
+            msg_content[type] = mtype
+            msg_content[data] = content
             if self.DEBUG:
                 print('    %s[Recalled]' % msg_prefix)
         elif mtype == WXBot.CONTENT_TYPE_REDRAW_OR_OTHER:  # unknown, maybe red packet, or group invite or realtime location finished
-            msg_content['type'] = mtype
-            msg_content['data'] = msg['Content']
+            msg_content[type] = mtype
+            msg_content[data] = content
             if self.DEBUG:
                 print('    [Unknown] MSGTYPE:%d' % mtype)
-                print('    |Content: %s' % msg['Content'])
+                print('    |Content: %s' % content)
         else:
-            msg_content['type'] = mtype
-            msg_content['data'] = content
+            msg_content[type] = mtype
+            msg_content[data] = content
             if self.DEBUG:
                 print('    %s[Unknown] MSGTYPE: %d ' % (msg_prefix, mtype))
-                print('    |Content: %s' % msg['Content'])
+                print('    |Content: %s' % content)
         return msg_content
 
     def handle_msg(self, r):
@@ -669,21 +690,23 @@ class WXBot:
             99 -> Unknown
         :param r: 原始微信消息
         """
-
-        try:
-            for msg in r['AddMsgList']:
-                user = {'id': msg['FromUserName'], 'name': 'unknown'}
-                global userfrom
-                userfrom = user['id']
+        for msg in r['AddMsgList']:
+            try:
+                user_id = msg['FromUserName']
+                user_name = self.get_contact_prefer_name(self.get_contact_name(user_id))
+                user_name = html.unescape(user_name) if user_name else user_id
+                user = {'id': user_id, 'name': user_name}
                 userto_id = msg['ToUserName']
                 userto_name = self.get_contact_prefer_name(self.get_contact_name(userto_id))
-                userto_name = userto_name if userto_name else ''
+                userto_name = html.unescape(userto_name) if userto_name else userto_id
+                userto = {'id':userto_id,'name':userto_name}
 
                 if msg['MsgType'] == WXBot.CONTENT_TYPE_STATUSNOTIFY:  # init message
-                    msg_type_id = WXBot.CONTENT_TYPE_STATUSNOTIFY
-                    user['name'] = 'system'
+                    msg_from_type = WXBot.MSG_FROM_STATUSNOTIFY
+                    if user['name'] == '':
+                        user['name'] = 'status notify'
                 elif msg['MsgType'] == WXBot.CONTENT_TYPE_VERIFYMSG:  # friend request
-                    msg_type_id = WXBot.CONTENT_TYPE_VERIFYMSG
+                    msg_from_type = WXBot.MSG_FROM_FRIENDREQ
                     pass
                     # content = msg['Content']
                     # username = content[content.index('fromusername='): content.index('encryptusername')]
@@ -694,45 +717,40 @@ class WXBot:
                     # # print u'Ticket：'+msg['RecommendInfo']['Ticket'] # Ticket添加好友时要用
                     # print u'       微信号：'+username #未设置微信号的 腾讯会自动生成一段微信ID 但是无法通过搜索 搜索到此人
                 elif msg['FromUserName'] == self.my_account['UserName']:  # Self
-                    msg_type_id = WXBot.MSG_TYPE_SELF
-                    user['name'] = 'self'
+                    msg_from_type = WXBot.MSG_FROM_SELF
                 elif msg['ToUserName'] == 'filehelper':  # File Helper
-                    msg_type_id = WXBot.MSG_TYPE_FILEHELPER
-                    user['name'] = 'file_helper'
+                    msg_from_type = WXBot.MSG_FROM_FILEHELPER
                 elif msg['FromUserName'][:2] == '@@':  # Group
-                    msg_type_id = WXBot.MSG_TYPE_GROUP
-                    user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+                    msg_from_type = WXBot.MSG_FROM_GROUP
                 elif self.is_contact(msg['FromUserName']):  # Contact
-                    msg_type_id = WXBot.MSG_TYPE_CONTACT
-                    user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+                    msg_from_type = WXBot.MSG_FROM_CONTACT
                 elif self.is_public(msg['FromUserName']):  # Public
-                    msg_type_id = WXBot.MSG_TYPE_PUBLIC
-                    user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+                    msg_from_type = WXBot.MSG_FROM_PUBLIC
                 elif self.is_special(msg['FromUserName']):  # Special
-                    msg_type_id = WXBot.MSG_TYPE_SPECIAL
-                    user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+                    msg_from_type = WXBot.MSG_FROM_CONTACT
                 else:
-                    msg_type_id = WXBot.MSG_TYPE_UNKNOW
-                    user['name'] = 'unknown'
-                if not user['name']:
-                    user['name'] = 'unknown'
-                user['name'] = html.unescape(user['name'])
-                if self.DEBUG and msg_type_id != 0:
-                    print('[MSG] %s  -->  %s:' % (user['name'], userto_name))
-                content = self.extract_msg_content(msg_type_id, msg)
-                global message
-                message = {'msg_type_id': msg_type_id,
-                           'msg_id': msg['MsgId'],
-                           'content': content,
-                           'to_user_id': msg['ToUserName'],
-                           'user': user}
+                    msg_from_type = WXBot.MSG_FROM_UNKNOW
+
+                if self.DEBUG and msg_from_type != 0:
+                    print('[MSG] %s  -->  %s:' % (user['name'], userto['name']))
+                try:
+                    content = self.extract_msg_content(msg_from_type, msg)
+                except Exception as e:
+                    print('[ERROR] IN extract msg content', e)
+                message = {WXBot.DICT_MSG_KEY_FROM_TYPE: msg_from_type,
+                           WXBot.DICT_MSG_KEY_MSG_ID: msg['MsgId'],
+                           WXBot.DICT_MSG_KEY_MSG_CONTENT: content,
+                           WXBot.DICT_MSG_KEY_USERTO: userto,
+                           WXBot.DICT_MSG_KEY_USERFROM: user}
                 # extra job move the thread avoid to  block the main process
                 t = threading.Thread(target=self.handle_msg_all, args=(message,))
                 t.start()
-        except Exception as e:
-            if userfrom is not None:
-                self.send_msg_by_uid(str(e), userfrom)
-            print(str(e))
+            except Exception as e:
+                try:
+                    self.send_msg_by_uid(str(e), user_id)
+                    print(e)
+                except Exception:
+                    pass
 
     def schedule(self):
         """
@@ -761,6 +779,7 @@ class WXBot:
         if not sync_result:
             return
         log = open(os.path.join(self.temp_pwd, 'log.log'), 'a+')
+        log.write('START TIME: %s\n' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         while True:
             check_time = time.time()
             try:
@@ -826,6 +845,7 @@ class WXBot:
             check_time = time.time() - check_time
             if check_time < 0.8:
                 time.sleep(1 - check_time)
+        log.write('END TIME: %s\n' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         log.close()
 
     def apply_useradd_requests(self, RecommendInfo):
@@ -988,6 +1008,8 @@ class WXBot:
             dic = r.json()
             return dic['BaseResponse']['Ret'] == 0
         except (ConnectionError, ReadTimeout):
+            return False
+        except Exception:
             return False
 
     def upload_media(self, fpath, is_img=False):
@@ -1471,7 +1493,7 @@ class WXBot:
         url = self.base_uri + '/webwxgetmsgimg?MsgID=%s&skey=%s' % (msgid, self.skey)
         r = self.session.get(url)
         data = r.content
-        fn = 'img_' + ('' if fromuser == '' else (fromuser + '_')) + msgid + '.jpg'
+        fn = 'img_' + fromuser + ('_' if fromuser else '') + str(int(time.time())) + '.jpg'
         with open(os.path.join(self.image_dir, fn), 'wb') as f:
             f.write(data)
         return fn
@@ -1488,7 +1510,7 @@ class WXBot:
         url = self.base_uri + '/webwxgetvoice?msgid=%s&skey=%s' % (msgid, self.skey)
         r = self.session.get(url)
         data = r.content
-        fn = 'voice_' + ('' if fromuser == '' else (fromuser + '_')) + msgid + '.mp3'
+        fn = 'voice_' + fromuser + ('_' if fromuser else '') + str(int(time.time())) + '.mp3'
         with open(os.path.join(self.voice_dir, fn), 'wb') as f:
             f.write(data)
         return fn

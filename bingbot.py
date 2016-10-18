@@ -4,12 +4,15 @@
 
 from queue import Queue
 
-from wxBot.wxbot import *
-
+from wxBot.wxbot import WXBot
+from wxBot import emotion
+import random
+import re
 
 class BingBot(WXBot):
     '''
     把从联系人发的消息转发给小冰，然后把小冰的回复转发回去
+    唂咿呀咿哈哈哈哈哈哈
     '''
 
     def __init__(self):
@@ -19,21 +22,24 @@ class BingBot(WXBot):
         self.bing_name = '小冰'
 
     def handle_msg_all(self, msg):
-        if msg['user']['name'] == self.bing_name:
+        msgtype = msg[WXBot.DICT_MSG_KEY_MSG_CONTENT][WXBot.DICT_MSGCONTENT_KEY_TYPE]
+        if msg[WXBot.DICT_MSG_KEY_USERFROM]['name'] == self.bing_name:
             if not self.userqueue.empty():
                 user_to = self.userqueue.get()
-                if msg['content']['type'] == 0:  # text msg
-                    self.send_msg_by_uid(msg['content']['data'], user_to)
-                elif msg['content']['type'] == BingBot.CONTENT_TYPE_IMAGE:
-                    self.send_msg_by_uid('呵呵', user_to)
-                elif msg['content']['type'] == BingBot.CONTENT_TYPE_VOICE:
-                    self.send_msg_by_uid('哈哈', user_to)
+                if msgtype == WXBot.CONTENT_TYPE_TEXT:  # text msg
+                    self.send_msg_by_uid(emotion.gen_random_emotion() + msg[WXBot.DICT_MSG_KEY_MSG_CONTENT][WXBot.DICT_MSGCONTENT_KEY_DATA], user_to)
+                elif msgtype == WXBot.CONTENT_TYPE_IMAGE:
+                    self.send_msg_by_uid('呵呵' + emotion.gen_random_emotion(), user_to)
+                elif msgtype == WXBot.CONTENT_TYPE_VOICE:
+                    self.send_msg_by_uid('哈哈' + emotion.gen_random_emotion(), user_to)
+                elif msgtype == WXBot.CONTENT_TYPE_EMOTICON:
+                    self.send_msg_by_uid('嘻嘻' + emotion.gen_random_emotion(), user_to)
                 else:
-                    self.send_msg_by_uid('嗯呢', user_to)
+                    self.send_msg_by_uid('嗯呢' + emotion.gen_random_emotion(), user_to)
         else:
-            if msg['SubMsgType'] == 0 and msg['MsgType'] == WXBot.CONTENT_TYPE_TEXT:  # from contract and text msg
-                self.send_msg(self.bing_name, msg['content']['data'])
-                self.userqueue.put(msg['user']['id'])
+            if msgtype == WXBot.CONTENT_TYPE_TEXT and msg[WXBot.DICT_MSG_KEY_FROM_TYPE] == WXBot.MSG_FROM_CONTACT:  # from contract and text msg
+                self.send_msg(self.bing_name, msg[WXBot.DICT_MSG_KEY_MSG_CONTENT][WXBot.DICT_MSGCONTENT_KEY_DATA])
+                self.userqueue.put(msg[WXBot.DICT_MSG_KEY_USERFROM]['id'])
 
 
 def main():
