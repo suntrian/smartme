@@ -22,6 +22,7 @@ from traceback import format_exc
 import pyqrcode
 import requests
 from requests.exceptions import ConnectionError, ReadTimeout
+from wxBot import emotion
 
 UNKONWN = 'unkonwn'
 SUCCESS = '200'
@@ -540,7 +541,7 @@ class WXBot:
                     msg_content['Detail'] = detail
                     msg_content['Desc'] = str_msg
                 else:
-                    msg_content[data] = content
+                    msg_content[data] = emotion.parse_emoji_in_span(content)        # parse emoji emotion
                 if self.DEBUG:
                     try:
                         print('    %s[Text] %s' % (msg_prefix, msg_content[data]))
