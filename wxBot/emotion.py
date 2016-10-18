@@ -5,7 +5,7 @@ emoji_span_str = '<span class="emoji emoji([\w]*)"></span>'
 emoji_pattern = re.compile(emoji_span_str)
 
 
-def gen_random_emotion(self):
+def gen_random_emotion():
     while True:
         try:
             qq_or_emoji = random.randint(0, 9) // 2
