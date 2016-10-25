@@ -11,4 +11,5 @@ wxBot/temp
 wxBot/text
 wxBot/voice
 *.bak
+*.txt
 python_test.py
