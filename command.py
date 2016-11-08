@@ -23,17 +23,21 @@ class Command(Thread):
         while True:
             try:
                 cmd = input(self.prompt)
+                cmd = cmd.upper()
                 if cmd == '':
                     print(cmd)
                 elif cmd == '':
                     print(cmd)
+                elif cmd == 'QUIT':
+                    break
                 else:
                     print(cmd)
-            except KeyboardInterrupt:
-                print('quit')
             except Exception as e:
                 print(e)
 
 if __name__ == '__main__':
     command = Command()
-    command.start()
+    try:
+        command.start()
+    except KeyboardInterrupt:
+        print('quit')
