@@ -1,6 +1,7 @@
 #!/usr/bin/python3.5
 # coding: utf-8
 
+import datetime
 import html.parser
 import json
 import mimetypes
@@ -11,7 +12,6 @@ import re
 import sys
 import threading
 import time
-import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +22,7 @@ from traceback import format_exc
 import pyqrcode
 import requests
 from requests.exceptions import ConnectionError, ReadTimeout
+
 from wxBot import emotion
 
 UNKONWN = 'unkonwn'
@@ -747,11 +748,12 @@ class WXBot:
                 t = threading.Thread(target=self.handle_msg_all, args=(message,))
                 t.start()
             except Exception as e:
+                print('[ERROR] ', e)
                 try:
                     self.send_msg_by_uid(str(e), user_id)
                     print(e)
                 except Exception:
-                    pass
+                    print('[ERROR] In sending Error Message')
 
     def schedule(self):
         """

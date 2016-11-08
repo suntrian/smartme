@@ -4,10 +4,9 @@
 
 from queue import Queue
 
-from wxBot.wxbot import WXBot
 from wxBot import emotion
-import random
-import re
+from wxBot.wxbot import WXBot
+
 
 class BingBot(WXBot):
     '''
