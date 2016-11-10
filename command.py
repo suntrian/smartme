@@ -1,10 +1,10 @@
 # encoding: utf-8
 
 from threading import Thread
-import finance.tusharewrap
+import finance.stock
 import wxBot.bingbot
 import weather
-
+import data
 
 class Command(Thread):
     """

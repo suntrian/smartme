@@ -7,7 +7,7 @@ import re
 import datetime
 import requests
 from bs4 import BeautifulSoup
-from smartme.metal.DataClass import DataClass
+from metal.DataClass import DataClass
 
 
 class ICBCDataClass(DataClass):
@@ -46,23 +46,26 @@ class ICBCDataClass(DataClass):
         print(hist)
 
     def parsedata(self, html_str):
-        soup = BeautifulSoup(html_str,self.SOUPPARSER)
+        soup = BeautifulSoup(html_str, self.SOUPPARSER)
         items = soup.table.table.table.findAll('td')
         self.uptime = items[0].span.text.strip()
         self.price = items[2].span.text.strip()
         self.name = items[9].text.strip()
 
-        return {'name':self.name,'price':self.price,'uptime':self.uptime}
+        return {'name': self.name, 'price': self.price, 'uptime': self.uptime}
 
-    def getdaydata(self,html_str):
+    def getdaydata(self, html_str):
         re_str = r'dataCell.cell0 = "([\d\-: ]*?)";dataCell.cell1 = "([\d\.]*?)"'
         res = re.findall(re_str, html_str.decode('utf-8'), flags=re.MULTILINE)
         hist = []
+        pretimestamp = 0
         for rr in res:
             uptime = rr[0]
             price = rr[1]
-            timestamp = int(datetime.datetime.strptime(uptime,'%Y-%m-%d %H:%M:%S').timestamp())
-            hist.append((price,timestamp))
+            timestamp = int(datetime.datetime.strptime(uptime, '%Y-%m-%d %H:%M:%S').timestamp())
+            if timestamp != pretimestamp:
+                hist.append((price, timestamp))
+                pretimestamp = timestamp
         return hist
 
 
@@ -78,7 +81,8 @@ class ICBCDATA:
     def __init__(self):
         self.query_url = 'http://www.icbc.com.cn/ICBCDynamicSite/Charts/GoldTendencyPicture.aspx'
         self.paper_gold = ICBCDataClass()  # 人民币账户黄金
-        self.paper_silver = ICBCDataClass('http://www.icbc.com.cn/ICBCDynamicSite/Charts/TimeLine.aspx?pWidth=1010&pHeight=600&dataType=0&dataId=903&picType=3')  # 人民币账户白银
+        self.paper_silver = ICBCDataClass(
+            'http://www.icbc.com.cn/ICBCDynamicSite/Charts/TimeLine.aspx?pWidth=1010&pHeight=600&dataType=0&dataId=903&picType=3')  # 人民币账户白银
         self.paper_silver.unit = DataClass.CNY
         self.paper_Platinum = ICBCDataClass()  # 人民币账户铂金
         self.paper_Palladium = ICBCDataClass()  # 人民币账户钯金
@@ -89,6 +93,7 @@ class ICBCDATA:
             self.paper_silver.save(os.path.join(os.getcwd(), 'silver.txt'))
         except Exception as e:
             print(e)
+
 
 if __name__ == "__main__":
     icbc = ICBCDATA()
