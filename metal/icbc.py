@@ -73,6 +73,7 @@ class ICBCDATA:
     '''
     # url:http://www.icbc.com.cn/ICBCDynamicSite/Charts/GoldTendencyPicture.aspx
     url : http://www.icbc.com.cn/ICBCDynamicSite/Charts/TimeLine.aspx?pWidth=1010&pHeight=600&dataType=0&dataId=903&picType=3   # silver
+    url: http://www.icbc.com.cn/ICBCDynamicSite/Charts/TimeLine.aspx?pWidth=1010&pHeight=600&dataType=0&dataId=901&picType=3    # gold
     data:
         paper_gold:{buyin:float, sellout:float, lowest:float, highest: float, uptime: int}
         paper_silver:{buyin:float, sellout:float, lowest:float, highest: float, uptime: int}

@@ -30,23 +30,19 @@ class Stock(model.Model):
 
     """
     def __init__(self, code, file=None):
-        model.Model.__init__(self)
+        model.Model.__init__(self, file)
         self.sharecode = code
-        self.filename = '' if file is None else file
-        if not self.filename:
-            self.open(self.filename)
-        pass
+        self.filename = file
 
     def update(self):
         data = ts.get_realtime_quotes(self.sharecode)
         dt = data.get('date')[0]
         tm = data.get('time')[0]
-        update_time = util.str_to_timestamp('%s %s'%(dt, tm), '%Y-%m-%d %H:%M:S')
+        update_time = util.timestr_to_timestamp('%s %s'%(dt, tm), '%Y-%m-%d %H:%M:S')
         if update_time <= self.pre_update_time:
             return
         data_str = data.to_csv(header=False, index=False)
-        if not self.filename:
-            self.file_handler.write(data_str + '\n')
+        self.write(data_str + '\n')
         model.Model.update(self)
 
 class StockMarket:

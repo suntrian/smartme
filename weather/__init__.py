@@ -20,8 +20,10 @@ class Weather(model.Model):
 
     """
 
-    def __init__(self, file=None):
-        model.Model.__init__(self, file=file)
+    def __init__(self, city, file=None):
+        self.city = city
+        model.Model.__init__(self,name=city, file=file)
+        self.update_frequency = 30*60
         self.api = Yaya()
 
     def update(self):
@@ -53,7 +55,7 @@ class Yaya:
 
     def update(self, city):
         param = dict()
-        param['city'] = 'CH010100'  # 北京
+        param['city'] = 'CH010700'  # 北京
         # param['city'] = 'CH210901'  # 金华
         param['key'] = self.key
         result = self.session.get(self.api, params=param)
@@ -110,7 +112,6 @@ class ThinkPage:
 
 
 if __name__ == "__main__":
-    weather = Weather('/home/yuanxm/weather.csv')
-    weather.update()
-    weather.save()
+    weather = Weather('beijing', '/home/yuanxm/weather.csv')
+
 

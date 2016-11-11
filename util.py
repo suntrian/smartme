@@ -7,9 +7,10 @@ def get_cur_path():
     return os.path.split(os.path.realpath(sys.argv[0]))[0]
 script_path = get_cur_path()
 
+std_time_fmt = "%Y-%m-%d %H:%M:%S"
 
 def timestamp_to_timestr(timestamp):
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+    return time.strftime(std_time_fmt, time.localtime(timestamp))
 
 
 def timestr_to_timestamp(timestr, fmt):
