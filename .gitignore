@@ -12,6 +12,7 @@ wxBot/text
 wxBot/voice
 *.bak
 *.txt
+*.log
 python_test.py
 yaha/
 jieba/

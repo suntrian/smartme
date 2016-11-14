@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import logging
 # http://1212.ip138.com/ic.asp 获取公网ip
 
 def get_cur_path():
@@ -23,4 +24,9 @@ def timestr_to_timestr(timestr, fmt_from, fmt_to):
 
 if __name__ == '__main__':
     print(timestr_to_timestamp('2016-11-09 15:41:23','%Y-%m-%d %H:%M:%S'))
-
+    logging.basicConfig(filename='smartme.log', level=logging.DEBUG)
+    logging.debug('this my debug')
+    logging.info('this is info')
+    logging.warning('this is warning')
+    logging.error('this is error')
+    logging.critical('this is critical')

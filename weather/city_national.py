@@ -1,5 +1,6 @@
 cities = \
-    {"city_id": "CH", "name": "中国", "en": "China", "list": [{"city_id": "CH01", "name": "北京", "en": "", "list": [
+    {"city_id": "CH", "name": "中国", "en": "China", "list": [
+    {"city_id": "CH01", "name": "北京", "en": "", "list": [
     {"city_id": "CH010100", "name": "北京", "en": "Beijing"}, 
     {"city_id": "CH010200", "name": "海淀", "en": "haidian"},
     {"city_id": "CH010300", "name": "朝阳", "en": "chaoyang"}, 

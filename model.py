@@ -3,6 +3,7 @@
 import os
 import io
 import sys
+from log import Logger
 import time
 import threading
 
@@ -20,6 +21,7 @@ class Model:
     lock = threading.RLock()
 
     def __init__(self, name='', file=None):
+        self.logger = Logger()
         self.name = name
         self.tag = ''
         self.rec_count = 0  # 缓存中的记录数
@@ -33,10 +35,12 @@ class Model:
         if self.file_name is not None:
             self.open(self.file_name)
         self.cache = []
+        self.logger.info('%s START' % self.name)
 
     def __del__(self):
         if self.file_handler is not None:
             self.file_handler.close()
+            self.logger.info('%s END' % self.name)
 
     def update(self):
         """
@@ -45,6 +49,8 @@ class Model:
         """
         self.rec_count += 1
         self.is_updated = True
+        self.logger.info('%s UPDATE' % self.name)
+        raise NotImplementedError
 
     def run(self):
         """
@@ -63,7 +69,6 @@ class Model:
                     time.sleep(self.update_frequency)
                 except Exception:
                     pass
-        print('STOP')
 
     def start(self):
         update_thread = threading.Thread(target=self.run)
@@ -92,7 +97,7 @@ class Model:
                 self.lock.acquire()
                 self.cache.clear()
                 self.lock.release()
-        self.is_autosave = True
+        # self.is_autosave = True
 
     def open(self, fn):
         if not os.path.exists(os.path.dirname(fn)):
@@ -123,6 +128,8 @@ class Model:
             self.file_handler.writelines(['%s\n' % l for l in text])
         else:
             self.file_handler.write(str(text) + '\n')
+        if not self.is_autosave:
+            self.file_handler.flush()
         return True
 
     def save(self):

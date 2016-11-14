@@ -13,7 +13,8 @@
 import model
 import requests
 import util
-
+from log import Logger
+from logging import Logger
 
 class Weather(model.Model):
     """
@@ -21,44 +22,50 @@ class Weather(model.Model):
     """
 
     def __init__(self, city, file=None):
+        self.logger = Logger('log.log')
         self.city = city
-        model.Model.__init__(self,name=city, file=file)
-        self.update_frequency = 30*60
+        self.is_autosave = False
+        model.Model.__init__(self, name=city, file=file)
+        self.update_frequency = 60*30
         self.api = Yaya()
 
     def update(self):
-        data = self.api.update('abc')
+        data = self.api.update(self.city)
         if isinstance(data, str):
             if self.file_name is not None:
-                self.file_handler.write(data + '\n')
+                self.write(data + '\n')
         else:
             return
         model.Model.update(self)
 
+from weather import city_parser
 
 class Yaya:
     """
         key: 8omfd0ib98mdlqgp
         天气实况: http://api.yytianqi.com/observe?city=CH010100&key=8omfd0ib98mdlqgp
-        # 24小时预报: http://api.yytianqi.com/weatherhours?city=CH010100&key=8omfd0ib98mdlqgp
+        # 24小时预报: http://api.yytianqi.com/weatherhours?city=CH010100&key=8omfd0ib98mdlqgp   # vip only
+        # 七天预报: http://api.yytianqi.com/forecast7d?city=*****&key=*******                   # 2days only
     """
 
     def __init__(self):
-        self.session = requests.session()
-        self.session.headers[
-            'User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36'
+        self.headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36'}
+        # self.session = requests.session()
+        # self.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36'
         self.key = '8omfd0ib98mdlqgp'
         self.api = 'http://api.yytianqi.com/observe'
-        # self.api = 'http://api.yytianqi.com/weatherhours' # vip only
-        # self.api = 'http://api.yytianqi.com/forecast7d'
         self.pre = {}
+
 
     def update(self, city):
         param = dict()
-        param['city'] = 'CH010700'  # 北京
-        # param['city'] = 'CH210901'  # 金华
+        # param['city'] = 'CH010100'  # 北京
+        cit = city_parser.get_en_by_name(city)
+        if cit is None:
+            return
+        param['city'] = cit['city_id']
         param['key'] = self.key
-        result = self.session.get(self.api, params=param)
+        result = requests.get(self.api, params=param, headers=self.headers)
         if not result.ok:
             return False
         res_json = result.json()
@@ -113,5 +120,5 @@ class ThinkPage:
 
 if __name__ == "__main__":
     weather = Weather('beijing', '/home/yuanxm/weather.csv')
-
-
+    weather.start()
+    input('hehe')
