@@ -9,7 +9,7 @@ import util
 
 class ICBC(Model):
     """
-
+        开市时间:每周一早7:00至周六早4:00  0,0,7,*,*,0  --> 0,0,4,*,*,5
     """
     _HTML_PARSER = 'html.parser'
     __headers = {

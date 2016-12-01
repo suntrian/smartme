@@ -22,12 +22,14 @@ class Weather(model.Model):
     """
 
     def __init__(self, city, file=None):
+        model.Model.__init__(self, name=city, file=file)
         self.logger = Logger('log.log')
         self.city = city
         self.is_autosave = False
-        model.Model.__init__(self, name=city, file=file)
         self.update_frequency = 60*30
         self.api = Yaya()
+
+
 
     def update(self):
         data = self.api.update(self.city)
@@ -37,6 +39,9 @@ class Weather(model.Model):
         else:
             return
         model.Model.update(self)
+
+    def test(self):
+        print('weather')
 
 from weather import city_parser
 

@@ -159,7 +159,6 @@ class WXBot:
     DICT_MSGCONTENT_KEY_DATA = 'Content'
     DICT_MSGCONTENT_KEY_SUBUSER = 'SubUser'
 
-
     def __init__(self):
         self.DEBUG = True
         self.uuid = ''
@@ -177,6 +176,7 @@ class WXBot:
         self.sync_file_host = ''
         self.processes = []
         self.appid = 'wx782c26e4c19acffb'
+        self.status = 'OFFLINE'
 
         # 文件缓存目录
         self.temp_pwd = os.path.join(os.getcwd(), 'temp')
@@ -1208,17 +1208,20 @@ class WXBot:
             self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.png'))
             print('[INFO] Please use WeChat to scan the QR code .')
 
+            self.status = 'WAIT_FOR_LOGIN'
             result = self.wait4login()
             if result != SUCCESS:
                 print('[ERROR] Web WeChat login failed. failed code=%s' % (result,))
                 return
 
+            self.status = "LOGIN"
             if self.login():
                 print('[INFO] Web WeChat login succeed .')
             else:
                 print('[ERROR] Web WeChat login failed .')
                 return
 
+            self.status = "INITIALIZING"
             if self.init():
                 print('[INFO] Web WeChat init succeed .')
             else:
@@ -1229,6 +1232,7 @@ class WXBot:
             print('[INFO] Get %d contacts' % len(self.contact_list))
             print('[INFO] Start to process messages .')
             # self.proc_msg()
+            self.status = "READY"
             listen_process = multiprocessing.Process(name='wxListen', target=self.proc_msg)
             listen_process.start()
             self.processes.append(listen_process)
@@ -1238,9 +1242,12 @@ class WXBot:
             # self.processes.append(send_process)
             for item in self.processes:
                 item.join()
+            self.status = 'STOPPED'
 
         except KeyboardInterrupt:
             pass
+        except Exception:
+            self.status = "EXCEPTION"
         finally:
             self.terminate()
 
@@ -1306,6 +1313,7 @@ class WXBot:
 
         retry_time = MAX_RETRY_TIMES
         while retry_time > 0:
+
             url = LOGIN_TEMPLATE % (tip, self.uuid, int(time.time()))
             code, data = self.do_request(url)
             if code == SCANED:

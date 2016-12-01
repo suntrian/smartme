@@ -2,11 +2,57 @@
 
 import os
 import io
-import sys
 from log import Logger
 import time
 import threading
 
+
+class BaseModel:
+
+    def __init__(self, name, record='', log=''):
+        self.logger = Logger(log)
+        self.name = name if name else self.__class__.__name__
+        self.interval = 60*30
+        self.file_threshold = 1024*1024*10                      # 10M(bytes)
+        self._data_base = '/home/yuanxm/PyProj/smartme/data'
+        self.is_stop = False
+        self.is_autosave = True
+        self.is_cutfile = True
+        self.file_handler = self.open()
+
+    def update(self):
+        raise NotImplementedError
+
+    def run(self):
+        while not self.is_stop:
+            try:
+                self.update()
+            except Exception as e:
+                self.logger.exception(e)
+            finally:
+                try:
+                    time.sleep(self.update_frequency)
+                except Exception:
+                    pass
+
+    def start(self):
+        update_thread = threading.Thread(target=self.run)
+        update_thread.setDaemon(True)
+        update_thread.start()
+
+    def stop(self):
+        self.is_stop = True
+
+    def open(self, file):
+        if not os.path.exists(os.path.dirname(file)):
+            raise FileNotFoundError
+        handler = open(file, 'a+')
+        if self.is_autosave:
+            self.start_autosave()
+
+
+    def start_autosave(self):
+        pass
 
 class Model:
     """
@@ -22,7 +68,7 @@ class Model:
 
     def __init__(self, name='', file=None):
         self.logger = Logger()
-        self.name = name
+        self.name = name if name else self.__class__.__name__
         self.tag = ''
         self.rec_count = 0  # 缓存中的记录数
         self.file_handler = None  # 文件句柄
@@ -47,10 +93,7 @@ class Model:
         update data , parse and  write the data to file cache which will be written to file frequently
         :return: None
         """
-        self.rec_count += 1
-        self.is_updated = True
-        self.logger.info('%s UPDATE' % self.name)
-        raise NotImplementedError
+        raise NotImplementedError('Must be Implemennted')
 
     def run(self):
         """
@@ -60,6 +103,9 @@ class Model:
         while not self.is_stop:
             try:
                 self.update()
+                self.rec_count += 1
+                self.is_updated = True
+                self.logger.info('%s UPDATE' % self.name)
             except KeyboardInterrupt:
                 self.close()
             except Exception as e:
@@ -119,7 +165,9 @@ class Model:
 
     def write(self, text):
         if self.file_handler is None:
-            return False
+            self.file_handler = self.open(self.file_name)
+        if self.file_handler.closed:
+            self.open(self.file_name)
         if not isinstance(self.file_handler, io.TextIOBase):
             return False
         if isinstance(text, str):

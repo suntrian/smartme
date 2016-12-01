@@ -5,6 +5,7 @@ import finance.stock
 import wxBot.bingbot
 import weather
 import data
+from Context import Manager
 
 class Command(Thread):
     """
@@ -13,8 +14,9 @@ class Command(Thread):
     """
     prompt = 'cmd:'
 
-    def __init__(self):
+    def __init__(self, manager):
         Thread.__init__(self)
+        self.manager = manager
 
     def run(self):
         self.go()

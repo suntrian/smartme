@@ -1,59 +1,128 @@
 # encoding: utf-8
 
+import os
+import shutil
+import time
 import logging
+from threading import Thread
+
+def singleton(cls, *args, **kw):
+    instances = {}
+    def _singleton(*args, **kw):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kw)
+        return instances[cls]
+    return _singleton
 
 
+@singleton
 class Logger:
     """
         logging wrapper
     """
 
-    def __init__(self,filename=''):
-        self.log_level = logging.DEBUG
-        self.log_filename = filename
-        self.log_filemode = 'w+'                # read and write with open with empty file
-        self.log_format = '[%(levelname)-7s] %(asctime)s %(threadName)s: %(message)s'
+    log_dirname = 'log'
+    log_filename = 'smartme.log'
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    log_path = os.path.abspath(os.path.join(current_path, log_dirname))
+    log_file = os.path.join(log_path, log_filename)
+
+    MAX_LOGFILE_SIZE = 5*1024*1024  # byte
+    LOG_LEVEL = logging.DEBUG
+
+    def __init__(self, filename='', name=None, loglevel=LOG_LEVEL):
+        self.log_level = loglevel
+        self.log_file = filename if filename else self.log_file
+        self.name = name if name else "SMARTME"
+        self.log_filemode = 'a'
+        self.file_handler = logging.FileHandler(self.log_file, mode=self.log_filemode)
+        self.log_format = '%(asctime)s [%(levelname)-7s] %(name)s: %(message)s'
         self.log_time_fmt = '%Y-%m-%d %H:%M:%S'
-        if isinstance(self.log_filename, str) and len(self.log_filename) > 0:
-            self.basic_config(filename=self.log_filename, level=self.log_level, format=self.log_format)
-        else:
-            self.basic_config(level=self.log_level, format=self.log_format)
+        self.log_formatter = logging.Formatter(self.log_format, self.log_time_fmt)
+        self.file_handler.setFormatter(self.log_formatter)
+        self.logger = logging.getLogger(self.name)
+        self.logger.setLevel(self.log_level)
+        self.logger.addHandler(self.file_handler)
+        deamon = LoggerDeamon(self)
+        deamon.setDaemon(True)
+        deamon.start()
 
-    def logfile(self, filename):
-        self.log_filename = filename
-        self.basic_config(filename=self.log_filename, level=self.log_level, format=self.log_format)
 
-    @staticmethod
-    def basic_config(**kwargs):
-        logging.basicConfig(**kwargs)
+    def get_logger(self, name):
+        self.set_logger(name)
+        return Logger(self.log_file, name, self.log_level)
 
-    @staticmethod
-    def debug(msg, *args, **kwargs):
-        logging.debug(msg, *args, **kwargs)
+    def set_logger(self, name):
+        self.logger.name = name
 
-    @staticmethod
-    def info(msg, *args, **kwargs):
-        logging.info(msg, *args, **kwargs)
+    def roll_log(self):
+        for i in range(1000):
+            file_name = os.path.join(self.log_path, 'smartme.%d.log'%i)
+            if os.path.isfile(file_name):
+                continue
+            shutil.move(self.log_path, file_name)
+            self.logger.removeHandler(self.file_handler)
+            self.file_handler = logging.FileHandler(self.log_file, mode=self.log_filemode)
+            self.logger.addHandler(self.file_handler)
+            return
 
-    @staticmethod
-    def warning(msg, *args, **kwargs):
-        logging.warning(msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(msg, *args, **kwargs)
 
-    @staticmethod
-    def error(msg, *args, **kwargs):
-        logging.error(msg, *args, **kwargs)
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(msg, *args, **kwargs)
 
-    @staticmethod
-    def critical(msg, *args, **kwargs):
-        logging.critical(msg, *args, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(msg, *args, **kwargs)
 
-    @staticmethod
-    def exception(msg, *args, **kwargs):
-        logging.exception(msg, *args, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        self.logger.error(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        self.logger.critical(msg, *args, **kwargs)
+
+    def exception(self, msg, *args, **kwargs):
+        self.logger.exception(msg, *args, **kwargs)
+
+class LoggerDeamon(Thread):
+    def __init__(self, logger):
+        Thread.__init__(self)
+        self.logger = logger
+        self.check_interval = 60 # second
+
+    def run(self):
+        while True:
+            filesize = os.path.getsize(self.logger.log_file)
+            if filesize >= self.logger.MAX_LOGFILE_SIZE:
+                self.logger.roll_log()
+            time.sleep(self.check_interval)
+
+
 
 if __name__ == '__main__':
     logger = Logger()
-    logger.info('this is info')
-    logger.debug('this is debug')
-    logger.warning('this is warning')
-    logger.error('this is error')
+    logger.get_logger('MMMMMMMMM')
+    logger.info('1this is info')
+    logger.debug('1this is debug')
+    logger.warning('1this is warning')
+    logger.error('1this is error')
+
+
+    logger2 = Logger().get_logger('PPPPPPPPPPPPPP')
+    logger2.info('222222222222222')
+    logger2.get_logger('QQQQQQQQQQQQQQQQQQQQQQ')
+    logger2.info('2this is info')
+    logger2.debug('2this is debug')
+    logger2.warning('2this is warning')
+    logger2.error('2this is error')
+
+    logger2.set_logger('RRRRRRRRRRRRRRRRRRR')
+    logger2.info('3this is info')
+    logger2.debug('3this is debug')
+    logger2.warning('3this is warning')
+    logger2.error('3this is error')
+
+    logger2 = Logger().get_logger('SSSSSSSSSSSSS')
+    logger2.info('44444444444444444444')
+    logger2.debug('$444444444444444444444444')
+    logger2.warning('44444444444444444444444')
