@@ -7,53 +7,6 @@ import time
 import threading
 
 
-class BaseModel:
-
-    def __init__(self, name, record='', log=''):
-        self.logger = Logger(log)
-        self.name = name if name else self.__class__.__name__
-        self.interval = 60*30
-        self.file_threshold = 1024*1024*10                      # 10M(bytes)
-        self._data_base = '/home/yuanxm/PyProj/smartme/data'
-        self.is_stop = False
-        self.is_autosave = True
-        self.is_cutfile = True
-        self.file_handler = self.open()
-
-    def update(self):
-        raise NotImplementedError
-
-    def run(self):
-        while not self.is_stop:
-            try:
-                self.update()
-            except Exception as e:
-                self.logger.exception(e)
-            finally:
-                try:
-                    time.sleep(self.update_frequency)
-                except Exception:
-                    pass
-
-    def start(self):
-        update_thread = threading.Thread(target=self.run)
-        update_thread.setDaemon(True)
-        update_thread.start()
-
-    def stop(self):
-        self.is_stop = True
-
-    def open(self, file):
-        if not os.path.exists(os.path.dirname(file)):
-            raise FileNotFoundError
-        handler = open(file, 'a+')
-        if self.is_autosave:
-            self.start_autosave()
-
-
-    def start_autosave(self):
-        pass
-
 class Model:
     """
         the base model

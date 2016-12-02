@@ -9,19 +9,6 @@ import os.path as Path
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 
-module = 'weather'
-fromlist = ['weather']
-mod = __import__(module)
-mod2 = importlib.import_module('weather')
-mod2.Weather('beijing').test()
-obj = getattr(mod2, 'Weather')
-print(obj)
-ms = dir(mod2)
-for m in ms:
-    try:
-        print(m,type(getattr(mod2, m)), issubclass(getattr(mod2, m), model.Model))
-    except TypeError as e:
-        print(e)
 
 class Child:
     def __init__(self):
@@ -34,9 +21,13 @@ class Father(Child):
         self.name = self.__class__.__name__
         print('Pather', self.name)
 
+def da():
+    pass
 
-Child()
-Father()
+c = Child()
+f = Father()
+
+print(type(Child), type(c),type(da), issubclass(Father, Child))
 
 exit(0)
 

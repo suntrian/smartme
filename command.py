@@ -1,11 +1,7 @@
 # encoding: utf-8
 
 from threading import Thread
-import finance.stock
-import wxBot.bingbot
-import weather
-import data
-from Context import Manager
+
 
 class Command(Thread):
     """

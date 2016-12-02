@@ -1,10 +1,7 @@
 # /usr/bin/python3
 
-from wxBot.wxbot import WXBot
 from command import Command
-import metal
-import weather
-from stock.Stock import MyStock
+from wxBot.wxbot import WXBot
 
 
 class Context:

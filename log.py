@@ -15,7 +15,7 @@ def singleton(cls, *args, **kw):
     return _singleton
 
 
-@singleton
+# @singleton
 class Logger:
     """
         logging wrapper
@@ -27,10 +27,10 @@ class Logger:
     log_path = os.path.abspath(os.path.join(current_path, log_dirname))
     log_file = os.path.join(log_path, log_filename)
 
-    MAX_LOGFILE_SIZE = 5*1024*1024  # byte
+    MAX_LOGFILE_SIZE = 512*1024  # byte
     LOG_LEVEL = logging.DEBUG
 
-    def __init__(self, filename='', name=None, loglevel=LOG_LEVEL):
+    def __init__(self, name=None, loglevel=LOG_LEVEL, filename=''):
         self.log_level = loglevel
         self.log_file = filename if filename else self.log_file
         self.name = name if name else "SMARTME"
@@ -50,7 +50,7 @@ class Logger:
 
     def get_logger(self, name):
         self.set_logger(name)
-        return Logger(self.log_file, name, self.log_level)
+        return Logger(name, self.log_level, self.log_file)
 
     def set_logger(self, name):
         self.logger.name = name
@@ -60,7 +60,7 @@ class Logger:
             file_name = os.path.join(self.log_path, 'smartme.%d.log'%i)
             if os.path.isfile(file_name):
                 continue
-            shutil.move(self.log_path, file_name)
+            shutil.move(self.log_file, file_name)
             self.logger.removeHandler(self.file_handler)
             self.file_handler = logging.FileHandler(self.log_file, mode=self.log_filemode)
             self.logger.addHandler(self.file_handler)
@@ -101,7 +101,7 @@ class LoggerDeamon(Thread):
 
 if __name__ == '__main__':
     logger = Logger()
-    logger.get_logger('MMMMMMMMM')
+    # logger.get_logger('MMMMMMMMM')
     logger.info('1this is info')
     logger.debug('1this is debug')
     logger.warning('1this is warning')
@@ -116,13 +116,16 @@ if __name__ == '__main__':
     logger2.warning('2this is warning')
     logger2.error('2this is error')
 
-    logger2.set_logger('RRRRRRRRRRRRRRRRRRR')
-    logger2.info('3this is info')
-    logger2.debug('3this is debug')
-    logger2.warning('3this is warning')
-    logger2.error('3this is error')
+    logger3 = Logger('TTTTTTTTTTTTTT')
+    # logger3.set_logger('RRRRRRRRRRRRRRRRRRR')
+    logger3.info('3this is info')
+    logger3.debug('3this is debug')
+    logger3.warning('3this is warning')
+    logger3.error('3this is error')
 
     logger2 = Logger().get_logger('SSSSSSSSSSSSS')
     logger2.info('44444444444444444444')
     logger2.debug('$444444444444444444444444')
     logger2.warning('44444444444444444444444')
+
+    logger.info('this log this log'*10)

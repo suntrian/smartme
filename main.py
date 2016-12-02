@@ -1,9 +1,7 @@
 # encoding: utf-8
 
-from apscheduler.schedulers.background import BackgroundScheduler
-import metal
-from finance.stock import Stock
-import sys
+from modules import metal
+from modules.finance import Stock
 
 stock = Stock('600252','/home/yuanxm/stock_600252.csv')
 
