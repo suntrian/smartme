@@ -35,6 +35,7 @@ class BingBot(WXBot):
                     self.send_msg_by_uid('嘻嘻' + emotion.gen_random_emotion(), user_to)
                 else:
                     self.send_msg_by_uid('嗯呢' + emotion.gen_random_emotion(), user_to)
+                # self.send_img_msg_by_uid('/home/yuanxm/Pictures/linuxworld.jpg',user_to)
         else:
             if msgtype == WXBot.CONTENT_TYPE_TEXT and msg[WXBot.DICT_MSG_KEY_FROM_TYPE] == WXBot.MSG_FROM_CONTACT:  # from contract and text msg
                 self.send_msg(self.bing_name, msg[WXBot.DICT_MSG_KEY_MSG_CONTENT][WXBot.DICT_MSGCONTENT_KEY_DATA])

@@ -6,6 +6,15 @@ import model
 
 import os.path as Path
 
+import modules
+import modules.metal
+import modules.weather
+print(dir(modules.metal))
+print(dir(modules.weather))
+print(dir(modules))
+print(type(modules))
+print(type(modules.weather), type(modules.weather.Yaya), type(modules.weather.city_parser), type(modules.weather.Weather), type(modules.weather.Logger))
+
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 
